@@ -36,11 +36,6 @@ int OldNumOfBuy = 0, OldNumOfSell = 0, OldNumOfBars = 0;
 //+------------------------------------------------------------------+
 int OnInit()
 {
-   if (Bars(_Symbol, PERIOD_H1) < Bars(_Symbol, PERIOD_D1)) 
-   {
-      Print("Not enough historical data for trading on this timeframe.");
-      return INIT_FAILED;
-   }
    //---
    Trade = new CTrade;
    Trade.SetExpertMagicNumber(MagicNumber);
@@ -97,18 +92,14 @@ void OnTick()
 
 void FirstBuy()
 {
-   if (PositionsTotal() == 0)
+   if(PositionsTotal() == 0)
    {
       double lotSize = FirstLot * FirstLotMultiplier;
-      double entryPrice = ASK;  // Use current ask price for entry.
-      double stopLossPrice = entryPrice - STP;
-      double takeProfitPrice = entryPrice + TKP;
-
-      if (!Trade.Buy(lotSize, _Symbol, entryPrice, stopLossPrice, takeProfitPrice, "First Buy"))
+      if(!Trade.Buy(lotSize, _Symbol, ASK, ASK - STP, ASK + TKP, "First Buy"))
          return;
       else
       {
-         PendingPrice = entryPrice - HedgeDistance;
+         PendingPrice = ASK - HedgeDistance;
          NextLot = FirstPendingLot;
          PendingSell();
       }
@@ -163,34 +154,38 @@ for(int i=0;i<OrdersTotal();i++)
    }
 }
 
-int NumOfBuy()
-{
-   int numBuy = 0;
-   for (int i = 0; i < PositionsTotal(); i++)
-   {
-      if (!PositionSelectByTicket(i))
-         continue;
-      if (PositionGetInteger(POSITION_MAGIC) != MagicNumber || PositionGetString(POSITION_SYMBOL) != Symbol() ||
-          PositionGetInteger(POSITION_TYPE) != POSITION_TYPE_BUY)
-         continue;
-      numBuy++;
-   }
-   return numBuy;
+int NumOfBuy(){
+
+int NumOfBuy = 0;
+for(int i=0;i<PositionsTotal();i++){
+if(!PositionSelectByTicket(PositionGetTicket(i)))
+   continue;
+   if(PositionGetInteger(POSITION_MAGIC)!= MagicNumber)
+   continue;
+   if(PositionGetString(POSITION_SYMBOL)!=Symbol())
+   continue;
+   if(PositionGetInteger(POSITION_TYPE) != POSITION_TYPE_BUY)
+   continue;
+   NumOfBuy++;
+}
+ return NumOfBuy;
 }
 
-int NumOfSell()
-{
-   int numSell = 0;
-   for (int i = 0; i < PositionsTotal(); i++)
-   {
-      if (!PositionSelectByTicket(i))
-         continue;
-      if (PositionGetInteger(POSITION_MAGIC) != MagicNumber || PositionGetString(POSITION_SYMBOL) != Symbol() ||
-          PositionGetInteger(POSITION_TYPE) != POSITION_TYPE_SELL)
-         continue;
-      numSell++;
-   }
-   return numSell;
+int NumOfSell(){
+
+int NumOfSell = 0;
+for(int i=0;i<PositionsTotal();i++){
+if(!PositionSelectByTicket(PositionGetTicket(i)))
+   continue;
+   if(PositionGetInteger(POSITION_MAGIC)!= MagicNumber)
+   continue;
+   if(PositionGetString(POSITION_SYMBOL)!=Symbol())
+   continue;
+   if(PositionGetInteger(POSITION_TYPE)!= POSITION_TYPE_SELL)
+   continue;
+   NumOfSell++;
+}
+ return NumOfSell;
 }
 
 bool NewBuyPresent(){
