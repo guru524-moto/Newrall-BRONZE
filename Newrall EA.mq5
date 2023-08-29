@@ -29,7 +29,14 @@ input int TakeProfit = 60;
 input int HedgingDistance = 20;
 
 double ASK, BID, STP, TKP, HedgeDistance, FirstPendingLot = 0, PendingPrice = 0, NextLot = 0;
+double highestProfit = 0;
 int OldNumOfBuy = 0, OldNumOfSell = 0, OldNumOfBars = 0;
+sinput string TrailingDownUp = ""; // TRAILING UP & DOWN
+input bool EnableTrailing = true;  // Enable trailing
+input double TrailingStop = 20;  // Trailing stop value in points
+input double TrailingUp = 20;    // Trailing up distance in points
+input double profitIncreasePercentage = 0.5; // TakeProfit Percentage
+
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                   |
@@ -62,6 +69,8 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 //| Expert tick function                                             |
 //+------------------------------------------------------------------+
+
+
 void OnTick()
 {
    if (NewBarPresent())
@@ -85,6 +94,51 @@ void OnTick()
       {
          PendingBuy();
          MorePendingSell();
+      }
+   }
+   
+   TrailingStops();  // Call the TrailingStops function outside of the NewBarPresent() block
+}
+void TrailingStops()
+{
+   for (int i = 0; i < PositionsTotal(); i++)
+   {
+      if (!PositionSelectByTicket(PositionGetTicket(i)))
+         continue;
+
+      double openPrice = PositionGetDouble(POSITION_PRICE_OPEN);
+      double currentProfit = PositionGetDouble(POSITION_PROFIT);
+      double stopLossPrice = PositionGetDouble(POSITION_SL);
+      double takeProfitPrice = PositionGetDouble(POSITION_TP);
+
+      // Calculate the trailing stop and trailing up levels
+      double trailingStopLevel = TrailingStop * _Point;
+      double trailingUpLevel = TrailingUp * _Point;
+
+      // Update the highest profit reached by a position
+      if (currentProfit > highestProfit)
+      {
+         highestProfit = currentProfit;
+      }
+
+      // Calculate the new stop loss based on the highest profit and trailing stop level
+      double newStopLoss = openPrice + (highestProfit - currentProfit) - trailingStopLevel;
+
+      // Ensure the new stop loss is not lower than the original stop loss
+      newStopLoss = MathMax(newStopLoss, stopLossPrice);
+
+      // Calculate the new take profit dynamically for increased profitability
+      double dynamicTakeProfit = openPrice * profitIncreasePercentage;
+
+      // Update the stop loss and take profit
+      if (newStopLoss > stopLossPrice)
+      {
+         if (ASK >= newStopLoss)
+         {
+            // Update take profit dynamically for increased profitability
+            double newTakeProfit = MathMax(dynamicTakeProfit, takeProfitPrice);
+            Trade.PositionModify(PositionGetTicket(i), newStopLoss, newTakeProfit);
+         }
       }
    }
 }
